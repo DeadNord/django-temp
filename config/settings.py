@@ -1,37 +1,48 @@
+"""
+Django settings template for a **zero‑project core** that runs **Django + PostgreSQL** only.
+Copy it into `config/settings.py` (or split into `base.py`/`dev.py`/`prod.py` if you prefer).
+All values are pulled from environment variables with sensible defaults so the project
+can boot locally with almost zero configuration, while remaining 12‑factor compliant
+in staging/production.
+"""
+
+from __future__ import annotations
+
 import os
 from pathlib import Path
-from pymongo import MongoClient
-from environs import Env
 
+from environs import Env
+import dj_database_url
+
+# ---------------------------------------------------------------------------
+# Environment & paths
+# ---------------------------------------------------------------------------
 env = Env()
 env.read_env()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
 
-# Auth Settings
-JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
-COOKIE_SECRET_KEY = os.environ.get("COOKIE_SECRET_KEY")
-ACCESS_TOKEN_EXPIRES_IN = os.environ.get("ACCESS_TOKEN_EXPIRES_IN", 60 * 60 * 24 * 7)
-REFRESH_TOKEN_EXPIRES_IN = os.environ.get("REFRESH_TOKEN_EXPIRES_IN", 60 * 60 * 24 * 30)
+# ---------------------------------------------------------------------------
+# Core settings
+# ---------------------------------------------------------------------------
+PYTHON_ENV: str = env.str("PYTHON_ENV", "development")
+DEBUG: bool = PYTHON_ENV == "development"
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+SECRET_KEY: str = env.str("DJANGO_SECRET_KEY", "⚠️  change‑me‑in‑production ⚠️")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-PYTHON_ENV = os.environ.get("PYTHON_ENV", "development")
-DEBUG = PYTHON_ENV == "development"
+ALLOWED_HOSTS: list[str] = env.list(
+    "DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"]
+)
 
-
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
-if PYTHON_ENV == "development":
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    raw_cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
-    CORS_ALLOWED_ORIGINS = raw_cors_origins.split(",") if raw_cors_origins else []
+    CORS_ALLOWED_ORIGINS: list[str] = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
-CORS_ALLOW_HEADERS = [
+CORS_ALLOW_HEADERS: list[str] = [
     "Accept",
     "Accept-encoding",
     "Authorization",
@@ -43,69 +54,49 @@ CORS_ALLOW_HEADERS = [
     "Cookie",
     "Referer",
 ]
+CORS_ALLOW_CREDENTIALS: bool = True
 
-CORS_ALLOW_CREDENTIALS = True
-
-
-# Application definition
-GLOBAL_RATE_LIMIT = os.environ.get("RATE_LIMITING", "100/hour")
+# ---------------------------------------------------------------------------
+# Rate limiting & DRF
+# ---------------------------------------------------------------------------
+GLOBAL_RATE_LIMIT = env.str("RATE_LIMITING", "100/hour")
 
 REST_FRAMEWORK = {
-    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"global": GLOBAL_RATE_LIMIT},
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "global": GLOBAL_RATE_LIMIT,
+    },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
 
+# ---------------------------------------------------------------------------
+# Apps
+# ---------------------------------------------------------------------------
 INSTALLED_APPS = [
+    # Django core
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",  # <- enable PostgreSQL specific fields
+    # Third‑party
     "corsheaders",
-    "api",
     "rest_framework",
     "drf_spectacular",
+    # Local
+    "api",
 ]
 
-
-SPECTACULAR_SETTINGS = {
-    "TITLE": "Users Service API",
-    "DESCRIPTION": "This service allows users to manage their financial transactions and budgets, categorize transactions, and view financial analytics.",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "LICENSE": {
-        "name": "MIT License",
-    },
-    "SERVERS": [
-        {"url": os.environ.get("SERVICE_URL", "http://localhost:8000")},
-    ],
-    "SWAGGER_UI_SETTINGS": {
-        "deepLinking": True,
-    },
-    "COMPONENT_SPLIT_REQUEST": True,
-    "SECURITY": [
-        {"Bearer": []},
-    ],
-    "SECURITY_SCHEMES": {
-        "Bearer": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": 'Введите ваш JWT токен в формате "Bearer {token}"',
-        },
-    },
-    "USE_SESSION_AUTH": False,
-    "EXTENSIONS_INFO": [
-        "api.middlewares.authentication_extensions.JWTAuthenticationScheme",
-    ],
-}
-
-
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -120,10 +111,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 
+# ---------------------------------------------------------------------------
+# Templates
+# ---------------------------------------------------------------------------
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -138,26 +132,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-
-# Database
-# Получаем параметры подключения к MongoDB из переменных окружения
-MONGO_URI = os.getenv(
-    "MONGO_URI",
-    "mongodb+srv://<username>:<password>@cluster0.mongodb.net/<database_name>?retryWrites=true&w=majority",
+# ---------------------------------------------------------------------------
+# Database (PostgreSQL only)
+# ---------------------------------------------------------------------------
+# Priority 1: full DATABASE_URL (e.g. render.com, Heroku, Fly.io)
+DATABASE_URL: str = env.str(
+    "DATABASE_URL",
+    default="postgres://{user}:{password}@{host}:{port}/{name}".format(
+        user=env.str("POSTGRES_USER", "postgres"),
+        password=env.str("POSTGRES_PASSWORD", "postgres"),
+        host=env.str("POSTGRES_HOST", "localhost"),
+        port=env.str("POSTGRES_PORT", "5432"),
+        name=env.str("POSTGRES_DB", "app_db"),
+    ),
 )
-MONGO_DB_NAME = os.getenv("MONGO_DATABASE", "your_mongo_database")
-MONGO_USER = os.getenv("MONGO_USER", "<username>")
-MONGO_PASSWORD = os.getenv("MONGO_PASSWORD", "<password>")
 
+DATABASES = {
+    "default": dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
+}
 
-# Подключаемся к MongoDB через PyMongo
-client = MongoClient(MONGO_URI)
-db = client[MONGO_DB_NAME]
-
-
+# ---------------------------------------------------------------------------
 # Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
-
+# ---------------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -173,31 +173,56 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
-
+# ---------------------------------------------------------------------------
+# Internationalisation
+# ---------------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
-
-TIME_ZONE = "UTC"
-
+TIME_ZONE = env.str("TIME_ZONE", "UTC")
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
-
+# ---------------------------------------------------------------------------
+# Static files
+# ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
-
+# ---------------------------------------------------------------------------
+# Misc
+# ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# APPEND_SLASH = False
-SECURE_SSL_REDIRECT = False
+SECURE_SSL_REDIRECT = not DEBUG
+
+# ---------------------------------------------------------------------------
+# OpenAPI / drf-spectacular
+# ---------------------------------------------------------------------------
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Zero‑Project Core API",
+    "DESCRIPTION": (
+        "Boilerplate project powered by Django REST Framework and PostgreSQL "
+        "with JWT auth out of the box."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "LICENSE": {"name": "MIT License"},
+    "SERVERS": [
+        {"url": env.str("SERVICE_URL", "http://localhost:8000")},
+    ],
+    "SWAGGER_UI_SETTINGS": {"deepLinking": True},
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SECURITY": [{"Bearer": []}],
+    "SECURITY_SCHEMES": {
+        "Bearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": 'Введите JWT в формате "Bearer <token>"',
+        }
+    },
+    "USE_SESSION_AUTH": False,
+    "EXTENSIONS_INFO": [
+        "api.middlewares.authentication_extensions.JWTAuthenticationScheme",
+    ],
+}
