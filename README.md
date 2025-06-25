@@ -1,14 +1,16 @@
-# Django + PostgreSQL Template
+# Microservice Template (Django + PostgreSQL + Nginx)
 
-This repository provides a minimal setup for running a Django project backed by PostgreSQL.
+This repository provides a minimal Django project that can act as a template
+for any microservice. It ships with PostgreSQL for storage and exposes the API
+through Nginx.
 
 ## Quick start
 
 1. Copy `.env.example` to `.env` and adjust the values if needed.
-2. Start the stack with Docker Compose:
+2. Start the stack with Docker Compose (Nginx listens on port `80`):
 
    ```bash
    docker-compose up
    ```
 
-The application will be available on the port specified by `API_PORT` in your `.env` file.
+The application will be available via Nginx on `http://localhost/`.

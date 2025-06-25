@@ -3,8 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.throttling import ScopedRateThrottle
 from drf_spectacular.utils import extend_schema
+from rest_framework import generics
 
-from .serializers import PingResponseSerializer
+from .serializers import PingResponseSerializer, ItemSerializer
+from .models import Item
 from .services.HealthService import HealthService
 
 
@@ -28,3 +30,11 @@ class PingView(APIView):
         data = HealthService().ping()
         serializer = PingResponseSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ItemListCreateView(generics.ListCreateAPIView):
+    """List or create ``Item`` objects."""
+
+    queryset = Item.objects.all()
+    serializer_class = ItemSerializer
+
