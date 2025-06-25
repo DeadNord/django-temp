@@ -10,4 +10,3 @@ pymongo
 bcrypt # Используется для хеширования паролей
 PyJWT # Используется для работы с JWT
 dnspython
-git+ssh://git@gitlab.com/personal-wms/personal-wms-utils.git
