@@ -17,16 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create .ssh directory and set permissions
 RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
 
-# Copy SSH private and public keys from the repo to the container
-COPY ./ssh/docker_container_rsa /root/.ssh/id_rsa
-COPY ./ssh/docker_container_rsa.pub /root/.ssh/id_rsa.pub
-
-# Set permissions for the SSH keys
-RUN chmod 600 /root/.ssh/id_rsa && chmod 644 /root/.ssh/id_rsa.pub
-
-# Add the GitLab server to known hosts to avoid prompt during cloning
-RUN ssh-keyscan gitlab.com >> /root/.ssh/known_hosts
-
 # Install Python dependencies
 RUN pip install --upgrade pip
 COPY requirements.txt ./

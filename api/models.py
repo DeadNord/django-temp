@@ -1,5 +1,4 @@
 from django.db import models
-from wms_utils.models.userAuth import User, Company
 
 
 class Item(models.Model):
@@ -12,4 +11,4 @@ class Item(models.Model):
         return self.name
 
 
-__all__ = ["User", "Company", "Item"]
+__all__ = ["Item"]
