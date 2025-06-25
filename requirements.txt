@@ -1,0 +1,13 @@
+psycopg2-binary>=2.8
+django
+djangorestframework
+environs
+drf-spectacular
+django-cors-headers==3.10.0
+gunicorn==21.2.0
+whitenoise
+pymongo
+bcrypt # Используется для хеширования паролей
+PyJWT # Используется для работы с JWT
+dnspython
+git+ssh://git@gitlab.com/personal-wms/personal-wms-utils.git

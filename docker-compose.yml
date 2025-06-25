@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: personal-wms-service-users
+    ports:
+      - "${API_PORT}:${API_PORT}"
+
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHON_ENV=${PYTHON_ENV}
+      - DEBUG=${DEBUG}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - RATE_LIMITING=${RATE_LIMITING}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - SERVICE_URL=${SERVICE_URL}
+
+      - MONGO_DATABASE=${MONGO_DATABASE}
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_URI=${MONGO_URI}
+
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - COOKIE_SECRET_KEY=${COOKIE_SECRET_KEY}
+
+      - ACCESS_TOKEN_EXPIRES_IN=${ACCESS_TOKEN_EXPIRES_IN}
+      - REFRESH_TOKEN_EXPIRES_IN=${REFRESH_TOKEN_EXPIRES_IN}
+
+    volumes:
+      - .:/usr/src/app
+
+    networks:
+      - django-network
+
+networks:
+  django-network:
+    driver: bridge
