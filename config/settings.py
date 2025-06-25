@@ -50,6 +50,7 @@ CORS_ALLOW_HEADERS: list[str] = [
     "Origin",
     "User-agent",
     "C-csrftoken",
+    "__csrftoken",
     "C-requested-with",
     "Cookie",
     "Referer",
@@ -70,8 +71,9 @@ REST_FRAMEWORK = {
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
+        # "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny"
+        ],
 }
 
 # ---------------------------------------------------------------------------
@@ -208,21 +210,21 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "LICENSE": {"name": "MIT License"},
     "SERVERS": [
-        {"url": env.str("SERVICE_URL", "http://localhost:8000")},
+        {"url": ""},
     ],
     "SWAGGER_UI_SETTINGS": {"deepLinking": True},
     "COMPONENT_SPLIT_REQUEST": True,
-    "SECURITY": [{"Bearer": []}],
-    "SECURITY_SCHEMES": {
-        "Bearer": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": 'Введите JWT в формате "Bearer <token>"',
-        }
-    },
+    # "SECURITY": [{"Bearer": []}],
+    # "SECURITY_SCHEMES": {
+    #     "Bearer": {
+    #         "type": "http",
+    #         "scheme": "bearer",
+    #         "bearerFormat": "JWT",
+    #         "description": 'Введите JWT в формате "Bearer <token>"',
+    #     }
+    # },
     "USE_SESSION_AUTH": False,
-    "EXTENSIONS_INFO": [
-        "api.middlewares.authentication_extensions.JWTAuthenticationScheme",
-    ],
+    # "EXTENSIONS_INFO": [
+    #     "api.middlewares.authentication_extensions.JWTAuthenticationScheme",
+    # ],
 }

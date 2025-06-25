@@ -10,7 +10,11 @@ through Nginx.
 2. Start the stack with Docker Compose (Nginx listens on port `80`):
 
    ```bash
-   docker-compose up
+   docker compose up -d --build
    ```
 
 The application will be available via Nginx on `http://localhost/`.
+
+
+docker compose exec web python manage.py makemigrations api
+docker compose exec web python manage.py migrate
